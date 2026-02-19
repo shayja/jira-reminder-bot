@@ -172,7 +172,12 @@ class JiraMonitor:
                 for issue in new_issues:
                     self.notified_tasks.add(issue["key"])
                 save_state(self.notified_tasks)
+            else:
+                logger.info(
+                    f"{len(issues)} incomplete tasks (already notified)."
+                )
 
+            # Cleanup resolved tasks from state
             self.notified_tasks.intersection_update(current_keys)
             save_state(self.notified_tasks)
 
@@ -203,4 +208,10 @@ async def main():
         await scheduler_loop(monitor)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # This catches the Ctrl+C at the top level
+        print("\n[!] Jira Bot shutting down...")
+    except SystemExit:
+        pass
