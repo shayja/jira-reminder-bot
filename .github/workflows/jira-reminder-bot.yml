@@ -2,11 +2,10 @@ name: Jira Reminder Bot
 
 on:
   schedule:
-    # Runs at the start of every hour from 06:00 to 17:00 UTC
-    # 06:00 UTC = 08:00 IST
-    # 17:00 UTC = 19:00 IST
-    # Day 0-4 = Sunday to Thursday
-    - cron: '0,30 6,7,8,9,10,11,12,13,14,15,16,17 * * 0-4'
+    # Runs at 0, 15, 30, and 45 minutes past the hour
+    # During the hours of 06:00 to 17:00 UTC (08:00 to 19:00 IST)
+    # Sunday to Thursday (0-4)
+    - cron: '0,15,30,45 6,7,8,9,10,11,12,13,14,15,16,17 * * 0-4'
   workflow_dispatch: # Always keep this so you can test it manually
 jobs:
   run-bot:
