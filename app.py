@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import aiohttp
-from config import EMAIL, API_TOKEN, CHECK_INTERVAL_SECONDS
+import os
+from config import EMAIL, API_TOKEN
 from state_manager import load_state, save_state
 from clients.jira import JiraClient
 from clients.telegram import TelegramNotifier
@@ -27,12 +28,12 @@ class JiraMonitor:
         self.notified_tasks = load_state()
 
     async def check(self):
-        logger.info("Checking Jira...")
+        logger.info("Starting Jira check...")
         try:
             issues = await self.jira.search_issues()
 
             if not issues:
-                logger.info("All clean.")
+                logger.info("All clean. Clearing state.")
                 self.notified_tasks.clear()
                 save_state(self.notified_tasks)
                 return
@@ -45,36 +46,27 @@ class JiraMonitor:
             ]
 
             if new_issues:
+                logger.info(f"Found {len(new_issues)} new issues to notify.")
                 await self.notifier.send(new_issues)
                 for issue in new_issues:
                     self.notified_tasks.add(issue["key"])
-                save_state(self.notified_tasks)
             else:
-                logger.info(
-                    f"{len(issues)} incomplete tasks (already notified)."
-                )
+                logger.info(f"{len(issues)} incomplete tasks found (all previously notified).")
 
-            # Cleanup resolved tasks from state
+            # Cleanup resolved tasks from state (if they are no longer in the 'incomplete' list)
             self.notified_tasks.intersection_update(current_keys)
             save_state(self.notified_tasks)
+            logger.info("Check complete and state updated.")
 
         except Exception as e:
             logger.error(f"Error during check: {e}")
-
-# =========================
-# Scheduler Loop
-# =========================
-
-async def scheduler_loop(monitor: JiraMonitor):
-    while True:
-        await monitor.check()
-        await asyncio.sleep(CHECK_INTERVAL_SECONDS)
 
 # =========================
 # Main
 # =========================
 
 async def main():
+    # It is good practice to ensure sessions are closed properly in serverless environments
     auth = aiohttp.BasicAuth(EMAIL, API_TOKEN)
 
     async with aiohttp.ClientSession(auth=auth) as session:
@@ -82,13 +74,12 @@ async def main():
         notifier = TelegramNotifier(session)
         monitor = JiraMonitor(jira, notifier)
 
-        await scheduler_loop(monitor)
+        # We call check() directly instead of the scheduler_loop.
+        # GitHub Actions handles the "scheduling" via the cron in your YAML.
+        await monitor.check()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except KeyboardInterrupt:
-        # This catches the Ctrl+C at the top level
-        print("\n[!] Jira Bot shutting down...")
-    except SystemExit:
-        pass
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Jira Bot shutting down...")
