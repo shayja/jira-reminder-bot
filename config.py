@@ -2,8 +2,10 @@ import os
 from dotenv import load_dotenv
 import pytz
 
+# This will try to load .env locally, but won't crash on GitHub
 load_dotenv()
 
+# These will now pull from GitHub Secrets (env: section in your YAML)
 JIRA_URL = os.getenv("JIRA_URL")
 EMAIL = os.getenv("JIRA_EMAIL")
 API_TOKEN = os.getenv("JIRA_API_TOKEN")
