@@ -28,8 +28,8 @@ AND created >= startOfMonth("-12")
 AND project IN ("Fizikal - EzShape")
 AND assignee WAS currentUser()
 AND (
-  labels IS EMPTY
-  OR originalEstimate IS EMPTY
+  /*labels IS EMPTY
+  OR */originalEstimate IS EMPTY
   OR originalEstimate <= 0
   OR sprint IS EMPTY
   OR "Project Fizikal" IS EMPTY
